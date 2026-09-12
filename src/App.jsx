@@ -176,6 +176,7 @@ function App() {
       }
     } else {
       setError(null);
+      if (qrRef.current?._container) qrRef.current._container.innerHTML = "";
     }
   }, [options, payload]);
 
