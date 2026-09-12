@@ -3,11 +3,13 @@ import Controls from "./components/Controls.jsx";
 import StyleControls from "./components/StyleControls.jsx";
 import LogoControls from "./components/LogoControls.jsx";
 import QRPreview from "./components/QRPreview.jsx";
+import ExportControls from "./components/ExportControls.jsx";
 import { PRESETS } from "./lib/presets.js";
 import {
   QRCodeStyling,
   buildQROptions,
   EC_CAPACITY,
+  qrMeta,
   textLogoDataUrl,
   exportPNG,
   exportSVG,
@@ -16,6 +18,13 @@ import {
 } from "./lib/qr.js";
 
 const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
+
+const TABS = [
+  { id: "content", label: "Content" },
+  { id: "style", label: "Style" },
+  { id: "logo", label: "Logo & caption" },
+  { id: "export", label: "Export" },
+];
 
 function IconSun() {
   return (
@@ -66,9 +75,11 @@ function App() {
 
   const [preset, setPreset] = useState("url");
   const [vals, setVals] = useState({ ...PRESETS.url.defaults });
+  const [tab, setTab] = useState("content");
 
   const [ecLevel, setEcLevel] = useState("H");
-  const [size, setSize] = useState(640);
+  const [version, setVersion] = useState(0);
+  const [size, setSize] = useState(768);
   const [margin, setMargin] = useState(24);
 
   const [fgType, setFgType] = useState("solid");
@@ -116,6 +127,13 @@ function App() {
   const capacity = EC_CAPACITY[effectiveEc];
   const overflow = bytes > capacity;
 
+  const meta = useMemo(
+    () => qrMeta(payload, effectiveEc, version),
+    [payload, effectiveEc, version],
+  );
+  const versionTooSmall = version > 0 && !!meta && !meta.fits;
+  const renderVersion = versionTooSmall ? 0 : version;
+
   const fgExport = fgType === "solid" ? fgColor : fgColor2;
   const fileName = useMemo(() => slug(caption) || "qr-code", [caption]);
 
@@ -129,6 +147,7 @@ function App() {
         size,
         margin,
         ecLevel: effectiveEc,
+        version: renderVersion,
         fgType,
         fgColor,
         fgColor2,
@@ -141,20 +160,24 @@ function App() {
         logoUrl,
         logoSize,
       }),
-    [payload, size, margin, effectiveEc, fgType, fgColor, fgColor2, bgType, bgColor, bgColor2, dotStyle, cornerStyle, cornerColor, logoUrl, logoSize],
+    [payload, size, margin, effectiveEc, renderVersion, fgType, fgColor, fgColor2, bgType, bgColor, bgColor2, dotStyle, cornerStyle, cornerColor, logoUrl, logoSize],
   );
 
   useEffect(() => {
     if (!qrRef.current) qrRef.current = new QRCodeStyling();
     const el = containerRef.current;
     if (el && !qrRef.current._container) qrRef.current.append(el);
-    try {
-      qrRef.current.update(options);
+    if (payload) {
+      try {
+        qrRef.current.update(options);
+        setError(null);
+      } catch (e) {
+        setError(String(e?.message || e));
+      }
+    } else {
       setError(null);
-    } catch (e) {
-      setError(String(e?.message || e));
     }
-  }, [options]);
+  }, [options, payload]);
 
   function changePreset(id) {
     setPreset(id);
@@ -230,78 +253,112 @@ function App() {
       </header>
 
       <main className="layout">
-        <div className="stack">
-          <Controls
-            preset={preset}
-            presetDef={presetDef}
-            onPreset={changePreset}
-            vals={vals}
-            onVal={setVal}
-            payload={payload}
-            bytes={bytes}
-            capacity={capacity}
-            overflow={overflow}
-            ecLevel={effectiveEc}
-            onEcLevel={setEcLevel}
-            forcedH={forcedH}
-            size={size}
-            onSize={setSize}
-            margin={margin}
-            onMargin={setMargin}
-          />
-          <StyleControls
-            fgType={fgType}
-            onFgType={setFgType}
-            fgColor={fgColor}
-            onFgColor={setFgColor}
-            fgColor2={fgColor2}
-            onFgColor2={setFgColor2}
-            bgType={bgType}
-            onBgType={setBgType}
-            bgColor={bgColor}
-            onBgColor={setBgColor}
-            bgColor2={bgColor2}
-            onBgColor2={setBgColor2}
-            dotStyle={dotStyle}
-            onDotStyle={setDotStyle}
-            cornerStyle={cornerStyle}
-            onCornerStyle={setCornerStyle}
-            cornerColor={cornerColor}
-            onCornerColor={setCornerColor}
-          />
-          <LogoControls
-            logoType={logoType}
-            onLogoType={setLogoType}
-            logoTxt={logoTxt}
-            onLogoTxt={setLogoTxt}
-            logoImg={logoImg}
-            onLogoImg={setLogoImg}
-            logoSize={logoSize}
-            onLogoSize={setLogoSize}
-            caption={caption}
-            onCaption={setCaption}
-            previewColor={fgExport}
-          />
-        </div>
-
         <QRPreview
           containerRef={containerRef}
           payload={payload}
           error={error}
-          busy={busy}
-          copied={copied}
-          canExport={canExport}
-          onPng={handlePng}
-          onSvg={handleSvg}
-          onCopySvg={handleCopySvg}
           bytes={bytes}
           capacity={capacity}
           overflow={overflow}
           ecLevel={effectiveEc}
           forcedH={forcedH}
+          meta={meta}
+          versionTooSmall={versionTooSmall}
           caption={caption}
           captionColor={fgExport}
         />
+
+        <div className="stack">
+          <section className="card editor">
+            <nav className="tabs" role="tablist" aria-label="Editor sections">
+              {TABS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  className={`tabs__btn${tab === id ? " active" : ""}`}
+                  onClick={() => setTab(id)}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+            <div className="editor__body">
+              {tab === "content" && (
+                <Controls
+                  preset={preset}
+                  presetDef={presetDef}
+                  onPreset={changePreset}
+                  vals={vals}
+                  onVal={setVal}
+                  payload={payload}
+                  bytes={bytes}
+                  capacity={capacity}
+                  overflow={overflow}
+                  ecLevel={effectiveEc}
+                  onEcLevel={setEcLevel}
+                  forcedH={forcedH}
+                  version={version}
+                  onVersion={setVersion}
+                  meta={meta}
+                  versionTooSmall={versionTooSmall}
+                  size={size}
+                  onSize={setSize}
+                  margin={margin}
+                  onMargin={setMargin}
+                />
+              )}
+              {tab === "style" && (
+                <StyleControls
+                  fgType={fgType}
+                  onFgType={setFgType}
+                  fgColor={fgColor}
+                  onFgColor={setFgColor}
+                  fgColor2={fgColor2}
+                  onFgColor2={setFgColor2}
+                  bgType={bgType}
+                  onBgType={setBgType}
+                  bgColor={bgColor}
+                  onBgColor={setBgColor}
+                  bgColor2={bgColor2}
+                  onBgColor2={setBgColor2}
+                  dotStyle={dotStyle}
+                  onDotStyle={setDotStyle}
+                  cornerStyle={cornerStyle}
+                  onCornerStyle={setCornerStyle}
+                  cornerColor={cornerColor}
+                  onCornerColor={setCornerColor}
+                />
+              )}
+              {tab === "logo" && (
+                <LogoControls
+                  logoType={logoType}
+                  onLogoType={setLogoType}
+                  logoTxt={logoTxt}
+                  onLogoTxt={setLogoTxt}
+                  logoImg={logoImg}
+                  onLogoImg={setLogoImg}
+                  logoSize={logoSize}
+                  onLogoSize={setLogoSize}
+                  caption={caption}
+                  onCaption={setCaption}
+                  previewColor={fgExport}
+                />
+              )}
+              {tab === "export" && (
+                <ExportControls
+                  canExport={canExport}
+                  busy={busy}
+                  copied={copied}
+                  onPng={handlePng}
+                  onSvg={handleSvg}
+                  onCopySvg={handleCopySvg}
+                />
+              )}
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   );

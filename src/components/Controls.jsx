@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { PRESET_ORDER, PRESETS } from "../lib/presets.js";
-import { EC_LEVELS } from "../lib/qr.js";
+import { EC_LEVELS, MAX_VERSION } from "../lib/qr.js";
 import { copyText } from "../lib/qr.js";
 
 function Field({ field, value, onChange }) {
@@ -71,6 +71,10 @@ export default function Controls({
   ecLevel,
   onEcLevel,
   forcedH,
+  version,
+  onVersion,
+  meta,
+  versionTooSmall,
   size,
   onSize,
   margin,
@@ -79,10 +83,13 @@ export default function Controls({
   const pct = capacity ? Math.min(100, Math.round((bytes / capacity) * 100)) : 0;
 
   return (
-    <section className="card">
+    <div className="editor__panel">
       <div className="card__head">
-        <h2 className="card__title">Content</h2>
+        <label className="panel-label" htmlFor="preset">
+          Type
+        </label>
         <select
+          id="preset"
           className="preset"
           value={preset}
           onChange={(e) => onPreset(e.target.value)}
@@ -133,17 +140,36 @@ export default function Controls({
           {forcedH && <p className="hint">H is forced while a logo is set.</p>}
         </div>
         <div className="field">
-          <label htmlFor="margin">Quiet zone · {margin}px</label>
-          <input
-            id="margin"
-            type="range"
-            min={0}
-            max={80}
-            step={4}
-            value={margin}
-            onChange={(e) => onMargin(Number(e.target.value))}
-          />
+          <label htmlFor="version">Version</label>
+          <select id="version" value={version} onChange={(e) => onVersion(Number(e.target.value))}>
+            <option value={0}>Auto</option>
+            {Array.from({ length: MAX_VERSION }, (_, i) => i + 1).map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
+          </select>
+          {meta && (
+            <p className={`hint${versionTooSmall ? " hint--warn" : ""}`}>
+              {versionTooSmall
+                ? `Needs at least v${meta.required} — using Auto for now`
+                : `Grid · v${meta.version} · ${meta.moduleCount}×${meta.moduleCount}`}
+            </p>
+          )}
         </div>
+      </div>
+
+      <div className="field">
+        <label htmlFor="margin">Quiet zone · {margin}px</label>
+        <input
+          id="margin"
+          type="range"
+          min={0}
+          max={80}
+          step={4}
+          value={margin}
+          onChange={(e) => onMargin(Number(e.target.value))}
+        />
       </div>
 
       <div className="field">
@@ -151,13 +177,13 @@ export default function Controls({
         <input
           id="size"
           type="range"
-          min={256}
-          max={1024}
+          min={384}
+          max={1600}
           step={32}
           value={size}
           onChange={(e) => onSize(Number(e.target.value))}
         />
       </div>
-    </section>
+    </div>
   );
 }

@@ -1,8 +1,30 @@
 import QRCodeStyling from "qr-code-styling";
+import qrcode from "qrcode-generator";
 
 export const EC_CAPACITY = { L: 2953, M: 2331, Q: 1663, H: 1273 };
 
 export const EC_LEVELS = ["L", "M", "Q", "H"];
+
+export const MAX_VERSION = 40;
+
+export function qrGrid(version) {
+  return 17 + 4 * version;
+}
+
+export function qrMeta(payload, ecLevel, forced) {
+  if (!payload) return null;
+  try {
+    const q = qrcode(0, ecLevel);
+    q.addData(payload);
+    q.make();
+    const required = (q.getModuleCount() - 17) / 4;
+    const fits = forced > 0 && forced <= MAX_VERSION ? forced >= required : true;
+    const version = fits && forced > 0 ? forced : required;
+    return { version, moduleCount: qrGrid(version), fits: forced > 0 ? fits : true, required };
+  } catch {
+    return null;
+  }
+}
 
 export const DOT_STYLES = [
   { v: "square", label: "Square" },
@@ -45,7 +67,7 @@ export function buildQROptions(s) {
       saveAsBlob: true,
     },
     qrOptions: {
-      typeNumber: 0,
+      typeNumber: s.version || 0,
       mode: undefined,
       errorCorrectionLevel: s.ecLevel,
     },

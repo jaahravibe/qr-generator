@@ -9,12 +9,15 @@ Deploys as a static site to GitHub Pages.
   Location, Calendar event, 2FA (TOTP), Crypto address. The generated string is
   always inspectable and copyable.
 - **Styling** — 6 dot styles, corner styles, solid or gradient module/background
-  colors, quiet-zone margin, error-correction level (L/M/Q/H).
+  colors, quiet-zone margin, error-correction level (L/M/Q/H). QR **version**
+  control (auto, or forced 1–40 with a live grid preview) tunes the code's
+  density and capacity.
 - **Badge & caption** — center the QR with an uploaded image or a rendered text
   wordmark (forces EC level H), and an optional caption line below the code
   that is included in exports.
-- **Exports** — PNG download, SVG download, copy SVG to clipboard. Live byte
-  counter surfaces capacity overflow before the code fails to generate.
+- **Exports** — one Export menu with PNG download, SVG download, and copy SVG
+  to clipboard. Live byte counter surfaces capacity overflow before the code
+  fails to generate.
 - **Adaptive theme** — follows the OS theme by default, with a light / dark /
   system toggle persisted in `localStorage`. Fully mobile responsive.
 

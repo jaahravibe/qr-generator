@@ -84,9 +84,7 @@ export default function StyleControls({
   onCornerColor,
 }) {
   return (
-    <section className="card">
-      <h2 className="card__title">Style</h2>
-
+    <div className="editor__panel">
       <div className="field">
         <label htmlFor="dot">Dot style</label>
         <select id="dot" value={dotStyle} onChange={(e) => onDotStyle(e.target.value)}>
@@ -159,6 +157,6 @@ export default function StyleControls({
         </div>
         <ColorRow label="Background color" value={bgColor} onChange={onBgColor} second={bgType === "gradient" ? bgColor2 : undefined} onSecondChange={onBgColor2} />
       </div>
-    </section>
+    </div>
   );
 }

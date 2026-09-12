@@ -42,9 +42,9 @@ export default function LogoControls({
   }
 
   return (
-    <section className="card">
+    <div className="editor__panel">
       <div className="card__head">
-        <h2 className="card__title">Logo &amp; caption</h2>
+        <span className="panel-label">Badge</span>
         <Segmented
           value={logoType}
           onChange={onLogoType}
@@ -128,6 +128,6 @@ export default function LogoControls({
           />
         </div>
       )}
-    </section>
+    </div>
   );
 }
