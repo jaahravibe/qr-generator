@@ -1,11 +1,34 @@
 import QRCodeStyling from "qr-code-styling";
 import qrcode from "qrcode-generator";
+import jsQR from "jsqr";
 
 export const EC_CAPACITY = { L: 2953, M: 2331, Q: 1663, H: 1273 };
 
 export const EC_LEVELS = ["L", "M", "Q", "H"];
 
 export const MAX_VERSION = 40;
+
+export async function verifyQR(qr, expected) {
+  try {
+    const canvas = await qr._getElement("png");
+    if (!canvas || !canvas.width || !canvas.height) return { status: "error" };
+    const scale = Math.min(1, 400 / Math.max(canvas.width, canvas.height));
+    const w = Math.max(1, Math.round(canvas.width * scale));
+    const h = Math.max(1, Math.round(canvas.height * scale));
+    const small = document.createElement("canvas");
+    small.width = w;
+    small.height = h;
+    const ctx = small.getContext("2d");
+    ctx.drawImage(canvas, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const result = jsQR(data, w, h);
+    if (!result) return { status: "fail" };
+    if (result.data === expected) return { status: "ok", decoded: result.data };
+    return { status: "mismatch", decoded: result.data };
+  } catch {
+    return { status: "error" };
+  }
+}
 
 export function qrGrid(version) {
   return 17 + 4 * version;

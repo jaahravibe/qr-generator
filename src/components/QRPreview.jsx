@@ -9,6 +9,7 @@ export default function QRPreview({
   forcedH,
   meta,
   versionTooSmall,
+  scan,
   caption,
   captionColor,
 }) {
@@ -16,8 +17,9 @@ export default function QRPreview({
     <section className="card preview">
       <h2 className="card__title">Preview</h2>
 
-      <div className={`stage${payload ? "" : " stage--empty"}`} ref={containerRef}>
+      <div className={`stage${payload ? "" : " stage--empty"}`}>
         {!payload && <p className="empty">Your QR code will appear here.</p>}
+        <div className="stage__qr" ref={containerRef} />
         {caption && payload && (
           <p className="stage__caption" style={{ color: captionColor }}>
             {caption}
@@ -42,6 +44,10 @@ export default function QRPreview({
           {bytes.toLocaleString()}B / ~{capacity.toLocaleString()}B
         </span>
         {forcedH && <span className="chip chip--accent">H forced · logo</span>}
+        {scan === "pending" && <span className="chip">Checking scan…</span>}
+        {scan === "ok" && <span className="chip chip--accent">Scans OK</span>}
+        {scan === "fail" && <span className="chip chip--danger">Not scannable</span>}
+        {scan === "mismatch" && <span className="chip chip--danger">Decodes differently</span>}
         {overflow && <span className="chip chip--danger">May not fit</span>}
       </div>
     </section>

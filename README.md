@@ -5,13 +5,18 @@ Deploys as a static site to GitHub Pages.
 
 ## Features
 
-- **Payload presets** — URL, Custom text, WiFi, Contact (vCard), Email, SMS,
-  Location, Calendar event, 2FA (TOTP), Crypto address. The generated string is
-  always inspectable and copyable.
+- **Payload presets** — URL, Custom text, WiFi, Contact (vCard),
+  Business card (MeCard), Email, SMS, WhatsApp, Telegram, Signal, Phone
+  call, Location, Calendar event, 2FA (TOTP), Crypto address (with
+  BIP21 amount/label/message). The generated string is always inspectable
+  and copyable.
 - **Styling** — 6 dot styles, corner styles, solid or gradient module/background
-  colors, quiet-zone margin, error-correction level (L/M/Q/H). QR **version**
-  control (auto, or forced 1–40 with a live grid preview) tunes the code's
-  density and capacity.
+  colors, a live color picker for every stop, quiet-zone margin,
+  error-correction level (L/M/Q/H). QR **version** control (auto, or forced
+  1–40 with a live grid preview) tunes the code's density and capacity.
+- **Scan-check** — the preview is decoded client-side (`jsQR`) so you get an
+  immediate "Scans OK" confirmation that styling and logos haven't broken
+  scannability before you export.
 - **Badge & caption** — center the QR with an uploaded image or a rendered text
   wordmark (forces EC level H), and an optional caption line below the code
   that is included in exports.
@@ -20,6 +25,8 @@ Deploys as a static site to GitHub Pages.
   fails to generate.
 - **Adaptive theme** — follows the OS theme by default, with a light / dark /
   system toggle persisted in `localStorage`. Fully mobile responsive.
+- **Installable PWA** — service worker with offline caching, install prompt,
+  app icons, and Open Graph / Twitter cards.
 
 ## Local development
 

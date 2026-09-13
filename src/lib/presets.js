@@ -15,6 +15,10 @@ const CRYPTO_SCHEMES = [
 const escVCard = (s) => s.replace(/\\/g, "").replace(/;/g, ",").replace(/[\r\n]+/g, " ").trim();
 const escWifi = (s) =>
   s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/:/g, "\\:").replace(/"/g, '\\"');
+const escMeCard = (s) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/:/g, "\\:").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ").trim();
+
+const stripDigits = (s) => s.replace(/\D/g, "");
+const stripFormatting = (s) => s.replace(/[\s().-]/g, "");
 
 export const PRESETS = {
   custom: {
@@ -110,7 +114,79 @@ export const PRESETS = {
     defaults: { number: "", message: "" },
     build: ({ number = "", message = "" }) => {
       const n = number.trim();
-      return n ? `sms:${n}${message ? `?body=${encodeURIComponent(message)}` : ""}` : "";
+      return n ? `sms:${n}${message ? `?body=${encodeURIComponent(message.trim())}` : ""}` : "";
+    },
+  },
+  whatsapp: {
+    label: "WhatsApp",
+    fields: [
+      { key: "number", type: "text", label: "Phone number", placeholder: "+1 555 000 1234" },
+      { key: "message", type: "textarea", label: "Message · optional", rows: 2 },
+    ],
+    defaults: { number: "", message: "" },
+    build: ({ number = "", message = "" }) => {
+      const n = stripDigits(number);
+      if (!n) return "";
+      return `https://wa.me/${n}${message.trim() ? `?text=${encodeURIComponent(message.trim())}` : ""}`;
+    },
+  },
+  telegram: {
+    label: "Telegram",
+    fields: [
+      { key: "user", type: "text", label: "Username", placeholder: "yourchannel" },
+      { key: "message", type: "textarea", label: "Message · optional", rows: 2 },
+    ],
+    defaults: { user: "", message: "" },
+    build: ({ user = "", message = "" }) => {
+      const u = user.trim().replace(/^@/, "");
+      if (!u) return "";
+      return `https://t.me/${u}${message.trim() ? `?text=${encodeURIComponent(message.trim())}` : ""}`;
+    },
+  },
+  signal: {
+    label: "Signal",
+    fields: [
+      { key: "number", type: "text", label: "Phone number", placeholder: "+1 555 000 1234" },
+    ],
+    defaults: { number: "" },
+    build: ({ number = "" }) => {
+      const n = stripDigits(number);
+      return n ? `https://signal.me/#p/+${n}` : "";
+    },
+  },
+  phone: {
+    label: "Phone call",
+    fields: [
+      { key: "number", type: "text", label: "Number", placeholder: "+1 555 000 1234" },
+    ],
+    defaults: { number: "" },
+    build: ({ number = "" }) => {
+      const n = stripFormatting(number);
+      return n ? `tel:${n}` : "";
+    },
+  },
+  mecard: {
+    label: "Business card (MeCard)",
+    fields: [
+      { key: "name", type: "text", label: "Name", placeholder: "Jane Doe" },
+      { key: "org", type: "text", label: "Company" },
+      { key: "phone", type: "text", label: "Phone" },
+      { key: "email", type: "text", label: "Email" },
+      { key: "url", type: "text", label: "Website" },
+    ],
+    defaults: { name: "", org: "", phone: "", email: "", url: "" },
+    build: ({ name = "", org = "", phone = "", email = "", url = "" }) => {
+      const fields = [];
+      if (name.trim()) {
+        const [namePart = "", ...rest] = name.trim().split(/\s+/);
+        const last = rest.join(" ");
+        fields.push(`N:${escMeCard(last)},${escMeCard(namePart)}`);
+      }
+      if (org.trim()) fields.push(`ORG:${escMeCard(org)}`);
+      if (phone.trim()) fields.push(`TEL:${escMeCard(phone)}`);
+      if (email.trim()) fields.push(`EMAIL:${escMeCard(email)}`);
+      if (url.trim()) fields.push(`URL:${escMeCard(url)}`);
+      return fields.length ? `MECARD:${fields.join(";")};;` : "";
     },
   },
   geo: {
@@ -176,11 +252,22 @@ export const PRESETS = {
       { key: "scheme", type: "select", label: "Network", options: CRYPTO_SCHEMES },
       { key: "address", type: "text", label: "Address" },
       { key: "amount", type: "text", label: "Amount", placeholder: "Optional" },
+      { key: "label", type: "text", label: "Label", placeholder: "Optional" },
+      { key: "message", type: "text", label: "Message", placeholder: "Optional" },
     ],
-    defaults: { scheme: "bitcoin", address: "", amount: "" },
-    build: ({ scheme = "bitcoin", address = "", amount = "" }) => {
+    defaults: { scheme: "bitcoin", address: "", amount: "", label: "", message: "" },
+    build: ({ scheme = "bitcoin", address = "", amount = "", label = "", message = "" }) => {
       const a = address.trim();
-      return a ? `${scheme}:${a}${amount ? `?amount=${amount.trim()}` : ""}` : "";
+      if (!a) return "";
+      const qs = [];
+      const pick = (key, val) => {
+        const v = val.trim();
+        if (v) qs.push(`${key}=${encodeURIComponent(v).replace(/%20/g, "+")}`);
+      };
+      pick("amount", amount);
+      pick("label", label);
+      pick("message", message);
+      return `${scheme}:${a}${qs.length ? `?${qs.join("&")}` : ""}`;
     },
   },
 };

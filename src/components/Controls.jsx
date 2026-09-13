@@ -47,12 +47,17 @@ function Payload({ payload }) {
 
   return (
     <details className="raw">
-      <summary>View generated payload</summary>
+      <summary>
+        <span className="raw__chevron" aria-hidden="true" />
+        Generated payload
+      </summary>
       <div className="raw__body">
         <pre>{payload}</pre>
-        <button className="btn btn--ghost btn--sm" type="button" onClick={onCopy}>
-          {copied ? "Copied" : "Copy payload"}
-        </button>
+        <div className="raw__actions">
+          <button className="btn btn--sm" type="button" onClick={onCopy}>
+            {copied ? "Copied" : "Copy payload"}
+          </button>
+        </div>
       </div>
     </details>
   );

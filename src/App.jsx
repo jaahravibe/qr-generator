@@ -15,6 +15,7 @@ import {
   exportSVG,
   getSvgString,
   copyText,
+  verifyQR,
 } from "./lib/qr.js";
 
 const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
@@ -101,7 +102,10 @@ function App() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [scan, setScan] = useState("idle");
   const copiedTimer = useRef(null);
+  const scanTimer = useRef(null);
+  const scanId = useRef(0);
 
   const presetDef = PRESETS[preset];
 
@@ -164,6 +168,7 @@ function App() {
   );
 
   useEffect(() => {
+    clearTimeout(scanTimer.current);
     if (!qrRef.current) qrRef.current = new QRCodeStyling();
     const el = containerRef.current;
     if (el && !qrRef.current._container) qrRef.current.append(el);
@@ -173,12 +178,25 @@ function App() {
         setError(null);
       } catch (e) {
         setError(String(e?.message || e));
+        setScan("idle");
+        return;
       }
     } else {
       setError(null);
       if (qrRef.current?._container) qrRef.current._container.innerHTML = "";
     }
-  }, [options, payload]);
+
+    if (payload && !overflow) {
+      setScan("pending");
+      const id = ++scanId.current;
+      scanTimer.current = setTimeout(async () => {
+        const res = await verifyQR(qrRef.current, payload);
+        if (id === scanId.current) setScan(res.status);
+      }, 350);
+    } else {
+      setScan("idle");
+    }
+  }, [options, payload, overflow]);
 
   function changePreset(id) {
     setPreset(id);
@@ -265,6 +283,7 @@ function App() {
           forcedH={forcedH}
           meta={meta}
           versionTooSmall={versionTooSmall}
+          scan={scan}
           caption={caption}
           captionColor={fgExport}
         />
