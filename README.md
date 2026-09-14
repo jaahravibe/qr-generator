@@ -5,7 +5,8 @@ Deploys as a static site to GitHub Pages.
 
 ## Features
 
-- **Payload presets** — URL, Custom text, WiFi, Contact (vCard),
+- **Payload presets** — Custom (multi-field with label and type per field),
+  Plain text, URL, WiFi, Contact (vCard),
   Business card (MeCard), Email, SMS, WhatsApp, Telegram, Signal, Phone
   call, Location, Calendar event, 2FA (TOTP), Crypto address (with
   BIP21 amount/label/message). The generated string is always inspectable
@@ -14,9 +15,8 @@ Deploys as a static site to GitHub Pages.
   colors, a live color picker for every stop, quiet-zone margin,
   error-correction level (L/M/Q/H). QR **version** control (auto, or forced
   1–40 with a live grid preview) tunes the code's density and capacity.
-- **Scan-check** — the preview is decoded client-side (`jsQR`) so you get an
-  immediate "Scans OK" confirmation that styling and logos haven't broken
-  scannability before you export.
+- **Verify on device** — after you export, scan the code with your own phone
+  camera to confirm styling and logos haven't broken scannability.
 - **Badge & caption** — center the QR with an uploaded image or a rendered text
   wordmark (forces EC level H), and an optional caption line below the code
   that is included in exports.

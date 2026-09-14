@@ -15,7 +15,6 @@ import {
   exportSVG,
   getSvgString,
   copyText,
-  verifyQR,
 } from "./lib/qr.js";
 
 const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
@@ -23,7 +22,7 @@ const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
 const TABS = [
   { id: "content", label: "Content" },
   { id: "style", label: "Style" },
-  { id: "logo", label: "Logo & caption" },
+  { id: "logo", label: "Logo" },
   { id: "export", label: "Export" },
 ];
 
@@ -102,10 +101,7 @@ function App() {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [scan, setScan] = useState("idle");
   const copiedTimer = useRef(null);
-  const scanTimer = useRef(null);
-  const scanId = useRef(0);
 
   const presetDef = PRESETS[preset];
 
@@ -168,7 +164,6 @@ function App() {
   );
 
   useEffect(() => {
-    clearTimeout(scanTimer.current);
     if (!qrRef.current) qrRef.current = new QRCodeStyling();
     const el = containerRef.current;
     if (el && !qrRef.current._container) qrRef.current.append(el);
@@ -178,29 +173,20 @@ function App() {
         setError(null);
       } catch (e) {
         setError(String(e?.message || e));
-        setScan("idle");
         return;
       }
     } else {
       setError(null);
       if (qrRef.current?._container) qrRef.current._container.innerHTML = "";
     }
-
-    if (payload && !overflow) {
-      setScan("pending");
-      const id = ++scanId.current;
-      scanTimer.current = setTimeout(async () => {
-        const res = await verifyQR(qrRef.current, payload);
-        if (id === scanId.current) setScan(res.status);
-      }, 350);
-    } else {
-      setScan("idle");
-    }
-  }, [options, payload, overflow]);
+  }, [options, payload]);
 
   function changePreset(id) {
+    const defaults = PRESETS[id].defaults;
+    const next = { ...defaults };
+    if (defaults.fields) next.fields = defaults.fields.map((f) => ({ ...f }));
     setPreset(id);
-    setVals({ ...PRESETS[id].defaults });
+    setVals(next);
     setError(null);
   }
 
@@ -283,7 +269,6 @@ function App() {
           forcedH={forcedH}
           meta={meta}
           versionTooSmall={versionTooSmall}
-          scan={scan}
           caption={caption}
           captionColor={fgExport}
         />

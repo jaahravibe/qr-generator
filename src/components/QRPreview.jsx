@@ -9,7 +9,6 @@ export default function QRPreview({
   forcedH,
   meta,
   versionTooSmall,
-  scan,
   caption,
   captionColor,
 }) {
@@ -44,10 +43,6 @@ export default function QRPreview({
           {bytes.toLocaleString()}B / ~{capacity.toLocaleString()}B
         </span>
         {forcedH && <span className="chip chip--accent">H forced · logo</span>}
-        {scan === "pending" && <span className="chip">Checking scan…</span>}
-        {scan === "ok" && <span className="chip chip--accent">Scans OK</span>}
-        {scan === "fail" && <span className="chip chip--danger">Not scannable</span>}
-        {scan === "mismatch" && <span className="chip chip--danger">Decodes differently</span>}
         {overflow && <span className="chip chip--danger">May not fit</span>}
       </div>
     </section>

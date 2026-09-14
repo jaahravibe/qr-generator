@@ -10,7 +10,6 @@
     "lint": "eslint . --max-warnings=0"
   },
   "dependencies": {
-    "jsqr": "^1.4.0",
     "qr-code-styling": "^1.9.2",
     "react": "^19.3.0",
     "react-colorful": "^5.8.1",

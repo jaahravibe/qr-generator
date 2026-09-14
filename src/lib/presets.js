@@ -20,9 +20,38 @@ const escMeCard = (s) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/
 const stripDigits = (s) => s.replace(/\D/g, "");
 const stripFormatting = (s) => s.replace(/[\s().-]/g, "");
 
+export const CUSTOM_TYPES = [
+  { v: "text", label: "Text", inputType: "text" },
+  { v: "number", label: "Number", inputType: "number" },
+  { v: "url", label: "URL", inputType: "url" },
+  { v: "email", label: "Email", inputType: "email" },
+  { v: "tel", label: "Phone", inputType: "tel" },
+  { v: "date", label: "Date", inputType: "date" },
+  { v: "time", label: "Time", inputType: "time" },
+  { v: "datetime", label: "DateTime", inputType: "datetime-local" },
+];
+
+export const blankField = () => ({
+  id: (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+  label: "",
+  type: "text",
+  value: "",
+});
+
 export const PRESETS = {
   custom: {
     label: "Custom",
+    dynamic: true,
+    defaults: { fields: [blankField()] },
+    build: ({ fields = [] }) =>
+      fields
+        .map((f) => ({ label: (f?.label || "").trim(), value: (f?.value || "").trim() }))
+        .filter((f) => f.value)
+        .map((f) => (f.label ? `${f.label}: ${f.value}` : f.value))
+        .join("\n"),
+  },
+  text: {
+    label: "Plain text",
     fields: [
       { key: "text", type: "textarea", label: "Content", placeholder: "Any text, URL or note", rows: 4 },
     ],

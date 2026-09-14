@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRESET_ORDER, PRESETS } from "../lib/presets.js";
+import { PRESET_ORDER, PRESETS, CUSTOM_TYPES, blankField } from "../lib/presets.js";
 import { EC_LEVELS, MAX_VERSION } from "../lib/qr.js";
 import { copyText } from "../lib/qr.js";
 
@@ -29,6 +29,16 @@ function Field({ field, value, onChange }) {
       return <input type="datetime-local" {...common} />;
     case "password":
       return <input type="password" autoComplete="off" {...common} />;
+    case "url":
+      return <input type="url" spellCheck={false} {...common} />;
+    case "email":
+      return <input type="email" {...common} />;
+    case "tel":
+      return <input type="tel" {...common} />;
+    case "date":
+      return <input type="date" {...common} />;
+    case "time":
+      return <input type="time" {...common} />;
     default:
       return <input type="text" spellCheck={false} {...common} />;
   }
@@ -87,6 +97,20 @@ export default function Controls({
 }) {
   const pct = capacity ? Math.min(100, Math.round((bytes / capacity) * 100)) : 0;
 
+  const customFields = vals.fields || [];
+
+  function updateRow(i, patch) {
+    onVal("fields", customFields.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  function removeRow(i) {
+    onVal("fields", customFields.filter((_, idx) => idx !== i));
+  }
+
+  function addRow() {
+    onVal("fields", [...customFields, blankField()]);
+  }
+
   return (
     <div className="editor__panel">
       <div className="card__head">
@@ -108,14 +132,62 @@ export default function Controls({
         </select>
       </div>
 
-      <div className="fields">
-        {presetDef.fields.map((f) => (
-          <div className="field" key={f.key}>
-            <label htmlFor={`f-${f.key}`}>{f.label}</label>
-            <Field field={f} value={vals[f.key] ?? ""} onChange={onVal} />
-          </div>
-        ))}
-      </div>
+      {presetDef.dynamic ? (
+        <div className="custom">
+          {customFields.map((row, i) => (
+            <div className="custom-row" key={row.id}>
+              <input
+                className="custom-row__label"
+                placeholder="Label"
+                aria-label="Field label"
+                value={row.label}
+                onChange={(e) => updateRow(i, { label: e.target.value })}
+              />
+              <select
+                className="custom-row__type"
+                aria-label="Field type"
+                value={row.type}
+                onChange={(e) => updateRow(i, { type: e.target.value })}
+              >
+                {CUSTOM_TYPES.map((t) => (
+                  <option key={t.v} value={t.v}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="custom-row__value"
+                type={(CUSTOM_TYPES.find((t) => t.v === row.type) || CUSTOM_TYPES[0]).inputType}
+                placeholder="Value"
+                aria-label={`Value for ${row.label.trim() || `field ${i + 1}`}`}
+                value={row.value}
+                onChange={(e) => updateRow(i, { value: e.target.value })}
+              />
+              <button
+                className="btn btn--sm custom-row__remove"
+                type="button"
+                aria-label="Remove field"
+                title="Remove field"
+                onClick={() => removeRow(i)}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button className="btn btn--sm add-field" type="button" onClick={addRow}>
+            + Add field
+          </button>
+        </div>
+      ) : (
+        <div className="fields">
+          {presetDef.fields.map((f) => (
+            <div className="field" key={f.key}>
+              <label htmlFor={`f-${f.key}`}>{f.label}</label>
+              <Field field={f} value={vals[f.key] ?? ""} onChange={onVal} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="bytes">
         <div className="bytes__bar" aria-hidden="true">
