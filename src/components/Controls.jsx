@@ -202,7 +202,7 @@ export default function Controls({
         </div>
       </div>
 
-      {payload ? <Payload payload={payload} /> : <p className="hint">Fill the fields above to generate a code.</p>}
+      {payload ? <Payload payload={payload} /> : <p className="hint">Complete the fields above to generate a code.</p>}
 
       <div className="grid2">
         <div className="field">

@@ -15,6 +15,7 @@ import {
   exportSVG,
   getSvgString,
   copyText,
+  applyImageFills,
 } from "./lib/qr.js";
 
 const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
@@ -83,14 +84,16 @@ function App() {
   const [margin, setMargin] = useState(24);
 
   const [fgType, setFgType] = useState("solid");
-  const [fgColor, setFgColor] = useState("#0f172a");
+  const [fgColor, setFgColor] = useState("#000000");
   const [fgColor2, setFgColor2] = useState("#4f46e5");
+  const [inkImg, setInkImg] = useState("");
   const [bgType, setBgType] = useState("solid");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [bgColor2, setBgColor2] = useState("#eef2ff");
-  const [dotStyle, setDotStyle] = useState("rounded");
+  const [bgImg, setBgImg] = useState("");
+  const [dotStyle, setDotStyle] = useState("square");
   const [cornerStyle, setCornerStyle] = useState("");
-  const [cornerColor, setCornerColor] = useState("#0f172a");
+  const [cornerColor, setCornerColor] = useState("#000000");
 
   const [logoType, setLogoType] = useState("none");
   const [logoTxt, setLogoTxt] = useState("");
@@ -134,11 +137,13 @@ function App() {
   const versionTooSmall = version > 0 && !!meta && !meta.fits;
   const renderVersion = versionTooSmall ? 0 : version;
 
-  const fgExport = fgType === "solid" ? fgColor : fgColor2;
+  const fgExport = fgType === "solid" || fgType === "image" ? fgColor : fgColor2;
   const fileName = useMemo(() => slug(caption) || "qr-code", [caption]);
 
   const qrRef = useRef(null);
   const containerRef = useRef(null);
+  const imageRef = useRef({ ink: inkImg, bg: bgImg });
+  imageRef.current = { ink: inkImg, bg: bgImg };
 
   const options = useMemo(
     () =>
@@ -164,7 +169,10 @@ function App() {
   );
 
   useEffect(() => {
-    if (!qrRef.current) qrRef.current = new QRCodeStyling();
+    if (!qrRef.current) {
+      qrRef.current = new QRCodeStyling();
+      qrRef.current.applyExtension((svg) => applyImageFills(svg, imageRef.current));
+    }
     const el = containerRef.current;
     if (el && !qrRef.current._container) qrRef.current.append(el);
     if (payload) {
@@ -179,7 +187,7 @@ function App() {
       setError(null);
       if (qrRef.current?._container) qrRef.current._container.innerHTML = "";
     }
-  }, [options, payload]);
+  }, [options, payload, inkImg, bgImg]);
 
   function changePreset(id) {
     const defaults = PRESETS[id].defaults;
@@ -228,17 +236,9 @@ function App() {
       <header className="top">
         <div className="brand">
           <span className="brand__mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <rect x="3" y="3" width="8" height="8" rx="1.5" />
-              <rect x="6" y="6" width="2" height="2" />
-              <rect x="13" y="3" width="8" height="8" rx="1.5" />
-              <rect x="16" y="6" width="2" height="2" />
-              <rect x="3" y="13" width="8" height="8" rx="1.5" />
-              <rect x="6" y="16" width="2" height="2" />
-              <rect x="13" y="13" width="2.5" height="2.5" rx="0.5" />
-              <rect x="18.5" y="13" width="2.5" height="2.5" rx="0.5" />
-              <rect x="18.5" y="18.5" width="2.5" height="2.5" rx="0.5" />
-              <rect x="13" y="18.5" width="2.5" height="2.5" rx="0.5" />
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+              <path fillRule="evenodd" d="M1 1h22v22H1V1Zm4 4v14h14v-14H5Z" />
+              <rect x="8" y="8" width="8" height="8" />
             </svg>
           </span>
           <div className="brand__text">
@@ -276,7 +276,7 @@ function App() {
         <div className="stack">
           <section className="card editor">
             <nav className="tabs" role="tablist" aria-label="Editor sections">
-              {TABS.map(({ id, label }) => (
+              {TABS.map(({ id, label }, i) => (
                 <button
                   key={id}
                   type="button"
@@ -285,6 +285,9 @@ function App() {
                   className={`tabs__btn${tab === id ? " active" : ""}`}
                   onClick={() => setTab(id)}
                 >
+                  <span className="tabs__num" aria-hidden="true">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -322,12 +325,16 @@ function App() {
                   onFgColor={setFgColor}
                   fgColor2={fgColor2}
                   onFgColor2={setFgColor2}
+                  inkImg={inkImg}
+                  onInkImg={setInkImg}
                   bgType={bgType}
                   onBgType={setBgType}
                   bgColor={bgColor}
                   onBgColor={setBgColor}
                   bgColor2={bgColor2}
                   onBgColor2={setBgColor2}
+                  bgImg={bgImg}
+                  onBgImg={setBgImg}
                   dotStyle={dotStyle}
                   onDotStyle={setDotStyle}
                   cornerStyle={cornerStyle}
@@ -352,14 +359,54 @@ function App() {
                 />
               )}
               {tab === "export" && (
-                <ExportControls
-                  canExport={canExport}
-                  busy={busy}
-                  copied={copied}
-                  onPng={handlePng}
-                  onSvg={handleSvg}
-                  onCopySvg={handleCopySvg}
-                />
+                <>
+                  {canExport && (
+                    <div className="reminders">
+                      <div className="reminder">
+                        <p className="reminder__what">Ready to export</p>
+                        <p className="reminder__why">Scan the preview with your phone before doing anything. A quick test now beats a failed print run later.</p>
+                      </div>
+                      {fgType === "image" && (
+                        <div className="reminder">
+                          <p className="reminder__what">Image used as the QR pattern</p>
+                          <p className="reminder__why">Low-contrast or busy images can fail to scan, so test it before exporting.</p>
+                        </div>
+                      )}
+                      {bgType === "image" && (
+                        <div className="reminder">
+                          <p className="reminder__what">Image used as the background</p>
+                          <p className="reminder__why">A busy or low-contrast background can interfere with scanning, so test it before exporting.</p>
+                        </div>
+                      )}
+                      {fgType === "gradient" && (
+                        <div className="reminder">
+                          <p className="reminder__what">Gradient used for the QR pattern</p>
+                          <p className="reminder__why">The lighter end of the gradient may not scan, so test it before exporting.</p>
+                        </div>
+                      )}
+                      {bgType === "gradient" && (
+                        <div className="reminder">
+                          <p className="reminder__what">Gradient used for the background</p>
+                          <p className="reminder__why">The lighter end of the gradient may not scan, so test it before exporting.</p>
+                        </div>
+                      )}
+                      {logoType !== "none" && (
+                        <div className="reminder">
+                          <p className="reminder__what">Logo overlaid on the code</p>
+                          <p className="reminder__why">The logo hides part of the data, so test the scan on a few different devices before exporting.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <ExportControls
+                    canExport={canExport}
+                    busy={busy}
+                    copied={copied}
+                    onPng={handlePng}
+                    onSvg={handleSvg}
+                    onCopySvg={handleCopySvg}
+                  />
+                </>
               )}
             </div>
           </section>

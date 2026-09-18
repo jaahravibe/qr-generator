@@ -13,8 +13,8 @@ export default defineConfig({
         short_name: "QR Generator",
         description:
           "Create, customize and download QR codes — text, links, WiFi, contacts and more.",
-        theme_color: "#0b0d12",
-        background_color: "#0b0d12",
+        theme_color: "#f8f4ec",
+        background_color: "#fffdf8",
         display: "standalone",
         start_url: "./",
         scope: "./",

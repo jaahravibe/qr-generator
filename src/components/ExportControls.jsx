@@ -2,8 +2,8 @@ export default function ExportControls({ canExport, busy, copied, onPng, onSvg, 
   return (
     <div className="editor__panel">
       <p className="hint">
-        Download the code as a high-res PNG, a crisp vector SVG, or copy the raw
-        SVG markup to use elsewhere.
+        Export as a high-res PNG, a crisp vector SVG, or copy the raw SVG markup
+        to reuse elsewhere.
       </p>
 
       <div className="actions">

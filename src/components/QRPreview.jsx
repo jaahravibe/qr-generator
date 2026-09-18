@@ -13,11 +13,14 @@ export default function QRPreview({
   captionColor,
 }) {
   return (
-    <section className="card preview">
-      <h2 className="card__title">Preview</h2>
-
+    <section className="preview">
       <div className={`stage${payload ? "" : " stage--empty"}`}>
-        {!payload && <p className="empty">Your QR code will appear here.</p>}
+        {!payload && (
+          <div className="empty">
+            <span className="empty__qr" aria-hidden="true" />
+            <p className="empty__msg">No signal — complete the form</p>
+          </div>
+        )}
         <div className="stage__qr" ref={containerRef} />
         {caption && payload && (
           <p className="stage__caption" style={{ color: captionColor }}>

@@ -94,6 +94,48 @@ export function buildQROptions(s) {
   };
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function ensurePattern(defs, id, imageUri, w, h) {
+  let pattern = defs.querySelector(`#${id}`);
+  if (!pattern) {
+    pattern = document.createElementNS(SVG_NS, "pattern");
+    pattern.setAttribute("id", id);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("width", w);
+    pattern.setAttribute("height", h);
+    const img = document.createElementNS(SVG_NS, "image");
+    img.setAttribute("href", imageUri);
+    img.setAttribute("x", "0");
+    img.setAttribute("y", "0");
+    img.setAttribute("width", w);
+    img.setAttribute("height", h);
+    img.setAttribute("preserveAspectRatio", "xMidYMid slice");
+    pattern.appendChild(img);
+    defs.appendChild(pattern);
+  }
+  return pattern;
+}
+
+export function applyImageFills(svg, { ink, bg }) {
+  if (!svg) return;
+  const defs = svg.querySelector("defs");
+  if (!defs) return;
+  const w = svg.getAttribute("width") || "256";
+  const h = svg.getAttribute("height") || "256";
+  const inkPattern = ink ? ensurePattern(defs, "qr-ink", ink, w, h) : null;
+  const bgPattern = bg ? ensurePattern(defs, "qr-bg", bg, w, h) : null;
+  const rects = svg.querySelectorAll("rect[clip-path]");
+  for (const r of rects) {
+    const cp = r.getAttribute("clip-path") || "";
+    if (inkPattern && (cp.includes("dot-color") || cp.includes("corners-"))) {
+      r.setAttribute("fill", `url(#qr-ink)`);
+    } else if (bgPattern && cp.includes("background-color")) {
+      r.setAttribute("fill", `url(#qr-bg)`);
+    }
+  }
+}
+
 function roundRect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();

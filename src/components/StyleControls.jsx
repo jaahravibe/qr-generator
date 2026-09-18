@@ -126,6 +126,38 @@ function ColorRow({ label, value, onChange, second, onSecondChange }) {
   );
 }
 
+function ImageField({ value, onChange, alt, hint }) {
+  const fileRef = useRef(null);
+
+  function onFile(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange(String(reader.result));
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  return (
+    <div className="logo">
+      {value ? (
+        <div className="logo__preview">
+          <img src={value} alt={alt} />
+          <button className="btn btn--ghost btn--sm" type="button" onClick={() => onChange("")}>
+            Remove
+          </button>
+        </div>
+      ) : (
+        <button className="btn btn--ghost" type="button" onClick={() => fileRef.current?.click()}>
+          Choose image (PNG, JPG, SVG)
+        </button>
+      )}
+      <input ref={fileRef} className="visually-hidden" type="file" accept="image/*" onChange={onFile} />
+      {hint && <p className="hint">{hint}</p>}
+    </div>
+  );
+}
+
 export default function StyleControls({
   fgType,
   onFgType,
@@ -133,12 +165,16 @@ export default function StyleControls({
   onFgColor,
   fgColor2,
   onFgColor2,
+  inkImg,
+  onInkImg,
   bgType,
   onBgType,
   bgColor,
   onBgColor,
   bgColor2,
   onBgColor2,
+  bgImg,
+  onBgImg,
   dotStyle,
   onDotStyle,
   cornerStyle,
@@ -178,32 +214,52 @@ export default function StyleControls({
 
       <div className="sub">
         <div className="sub__row">
-          <span className="sub__label">Modules</span>
+          <span className="sub__label">Ink</span>
           <Segmented
             value={fgType}
             onChange={onFgType}
             options={[
               { v: "solid", label: "Solid" },
               { v: "gradient", label: "Gradient" },
+              { v: "image", label: "Image" },
             ]}
           />
         </div>
-        <ColorRow label="Modules color" value={fgColor} onChange={onFgColor} second={fgType === "gradient" ? fgColor2 : undefined} onSecondChange={onFgColor2} />
+        {fgType === "image" ? (
+          <ImageField
+            value={inkImg}
+            onChange={onInkImg}
+            alt="Ink image preview"
+            hint="The image fills the dark modules. High-contrast images scan best."
+          />
+        ) : (
+          <ColorRow label="Ink color" value={fgColor} onChange={onFgColor} second={fgType === "gradient" ? fgColor2 : undefined} onSecondChange={onFgColor2} />
+        )}
       </div>
 
       <div className="sub">
         <div className="sub__row">
-          <span className="sub__label">Background</span>
+          <span className="sub__label">Paper</span>
           <Segmented
             value={bgType}
             onChange={onBgType}
             options={[
               { v: "solid", label: "Solid" },
               { v: "gradient", label: "Gradient" },
+              { v: "image", label: "Image" },
             ]}
           />
         </div>
-        <ColorRow label="Background color" value={bgColor} onChange={onBgColor} second={bgType === "gradient" ? bgColor2 : undefined} onSecondChange={onBgColor2} />
+        {bgType === "image" ? (
+          <ImageField
+            value={bgImg}
+            onChange={onBgImg}
+            alt="Paper image preview"
+            hint="The image fills the paper around the code."
+          />
+        ) : (
+          <ColorRow label="Paper color" value={bgColor} onChange={onBgColor} second={bgType === "gradient" ? bgColor2 : undefined} onSecondChange={onBgColor2} />
+        )}
       </div>
     </div>
   );
