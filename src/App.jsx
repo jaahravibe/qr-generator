@@ -93,7 +93,10 @@ function App() {
   const [bgImg, setBgImg] = useState("");
   const [dotStyle, setDotStyle] = useState("square");
   const [cornerStyle, setCornerStyle] = useState("");
+  const [cornerFill, setCornerFill] = useState("solid");
   const [cornerColor, setCornerColor] = useState("#000000");
+  const [cornerColor2, setCornerColor2] = useState("#4f46e5");
+  const [cornerImg, setCornerImg] = useState("");
 
   const [logoType, setLogoType] = useState("none");
   const [logoTxt, setLogoTxt] = useState("");
@@ -142,8 +145,8 @@ function App() {
 
   const qrRef = useRef(null);
   const containerRef = useRef(null);
-  const imageRef = useRef({ ink: inkImg, bg: bgImg });
-  imageRef.current = { ink: inkImg, bg: bgImg };
+  const imageRef = useRef({ ink: inkImg, bg: bgImg, corner: cornerImg });
+  imageRef.current = { ink: inkImg, bg: bgImg, corner: cornerImg };
 
   const options = useMemo(
     () =>
@@ -161,11 +164,13 @@ function App() {
         bgColor2,
         dotStyle,
         cornerStyle,
+        cornerFill,
         cornerColor,
+        cornerColor2,
         logoUrl,
         logoSize,
       }),
-    [payload, size, margin, effectiveEc, renderVersion, fgType, fgColor, fgColor2, bgType, bgColor, bgColor2, dotStyle, cornerStyle, cornerColor, logoUrl, logoSize],
+    [payload, size, margin, effectiveEc, renderVersion, fgType, fgColor, fgColor2, bgType, bgColor, bgColor2, dotStyle, cornerStyle, cornerFill, cornerColor, cornerColor2, logoUrl, logoSize],
   );
 
   useEffect(() => {
@@ -187,7 +192,7 @@ function App() {
       setError(null);
       if (qrRef.current?._container) qrRef.current._container.innerHTML = "";
     }
-  }, [options, payload, inkImg, bgImg]);
+  }, [options, payload, inkImg, bgImg, cornerImg]);
 
   function changePreset(id) {
     const defaults = PRESETS[id].defaults;
@@ -339,8 +344,14 @@ function App() {
                   onDotStyle={setDotStyle}
                   cornerStyle={cornerStyle}
                   onCornerStyle={setCornerStyle}
+                  cornerFill={cornerFill}
+                  onCornerFill={setCornerFill}
                   cornerColor={cornerColor}
                   onCornerColor={setCornerColor}
+                  cornerColor2={cornerColor2}
+                  onCornerColor2={setCornerColor2}
+                  cornerImg={cornerImg}
+                  onCornerImg={setCornerImg}
                 />
               )}
               {tab === "logo" && (

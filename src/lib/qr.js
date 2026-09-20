@@ -42,6 +42,12 @@ export const CORNER_STYLES = [
   { v: "extra-rounded", label: "Extra rounded" },
 ];
 
+export const CORNER_FILLS = [
+  { v: "solid", label: "Solid" },
+  { v: "gradient", label: "Gradient" },
+  { v: "image", label: "Image" },
+];
+
 function makeGradient(from, to) {
   return {
     type: "linear",
@@ -78,12 +84,23 @@ export function buildQROptions(s) {
         s.fgType === "gradient" && s.fgColor2 ? makeGradient(s.fgColor, s.fgColor2) : undefined,
     },
     cornersSquareOptions: s.cornerStyle
-      ? { type: s.cornerStyle, color: s.cornerColor }
+      ? {
+          type: s.cornerStyle,
+          color: s.cornerFill === "gradient" ? undefined : s.cornerColor,
+          gradient:
+            s.cornerFill === "gradient" && s.cornerColor2
+              ? makeGradient(s.cornerColor, s.cornerColor2)
+              : undefined,
+        }
       : undefined,
     cornersDotOptions: s.cornerStyle
       ? {
           type: s.cornerStyle === "dot" ? "dot" : s.cornerStyle === "square" ? "square" : undefined,
-          color: s.cornerColor,
+          color: s.cornerFill === "gradient" ? undefined : s.cornerColor,
+          gradient:
+            s.cornerFill === "gradient" && s.cornerColor2
+              ? makeGradient(s.cornerColor, s.cornerColor2)
+              : undefined,
         }
       : undefined,
     backgroundOptions: {
@@ -117,7 +134,7 @@ function ensurePattern(defs, id, imageUri, w, h) {
   return pattern;
 }
 
-export function applyImageFills(svg, { ink, bg }) {
+export function applyImageFills(svg, { ink, bg, corner }) {
   if (!svg) return;
   const defs = svg.querySelector("defs");
   if (!defs) return;
@@ -125,10 +142,13 @@ export function applyImageFills(svg, { ink, bg }) {
   const h = svg.getAttribute("height") || "256";
   const inkPattern = ink ? ensurePattern(defs, "qr-ink", ink, w, h) : null;
   const bgPattern = bg ? ensurePattern(defs, "qr-bg", bg, w, h) : null;
+  const cornerPattern = corner ? ensurePattern(defs, "qr-corner", corner, w, h) : null;
   const rects = svg.querySelectorAll("rect[clip-path]");
   for (const r of rects) {
     const cp = r.getAttribute("clip-path") || "";
-    if (inkPattern && (cp.includes("dot-color") || cp.includes("corners-"))) {
+    if (cornerPattern && cp.includes("corners-")) {
+      r.setAttribute("fill", `url(#qr-corner)`);
+    } else if (inkPattern && (cp.includes("dot-color") || cp.includes("corners-"))) {
       r.setAttribute("fill", `url(#qr-ink)`);
     } else if (bgPattern && cp.includes("background-color")) {
       r.setAttribute("fill", `url(#qr-bg)`);

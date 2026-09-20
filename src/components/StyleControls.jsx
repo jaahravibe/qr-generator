@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { HexColorPicker } from "react-colorful";
-import { CORNER_STYLES, DOT_STYLES } from "../lib/qr.js";
+import { CORNER_FILLS, CORNER_STYLES, DOT_STYLES } from "../lib/qr.js";
 
 function Segmented({ value, onChange, options }) {
   return (
@@ -179,8 +179,14 @@ export default function StyleControls({
   onDotStyle,
   cornerStyle,
   onCornerStyle,
+  cornerFill,
+  onCornerFill,
   cornerColor,
   onCornerColor,
+  cornerColor2,
+  onCornerColor2,
+  cornerImg,
+  onCornerImg,
 }) {
   return (
     <div className="editor__panel">
@@ -208,9 +214,38 @@ export default function StyleControls({
         </div>
         <div className="field">
           <label htmlFor="cornerColor">Corner color</label>
-          <ColorField label="Corner color" value={cornerColor} onChange={onCornerColor} />
+          {cornerStyle === "" ? (
+            <p className="hint">Corners follow the ink color until you pick a corner style.</p>
+          ) : (
+            <p className="hint">Apply a solid, gradient or image fill to the finder patterns below.</p>
+          )}
         </div>
       </div>
+
+      {cornerStyle !== "" && (
+        <div className="sub">
+          <div className="sub__row">
+            <span className="sub__label">Corner fill</span>
+            <Segmented value={cornerFill} onChange={onCornerFill} options={CORNER_FILLS} />
+          </div>
+          {cornerFill === "image" ? (
+            <ImageField
+              value={cornerImg}
+              onChange={onCornerImg}
+              alt="Corner image preview"
+              hint="The image fills the finder patterns in the three corners."
+            />
+          ) : (
+            <ColorRow
+              label="Corner color"
+              value={cornerColor}
+              onChange={onCornerColor}
+              second={cornerFill === "gradient" ? cornerColor2 : undefined}
+              onSecondChange={onCornerColor2}
+            />
+          )}
+        </div>
+      )}
 
       <div className="sub">
         <div className="sub__row">
