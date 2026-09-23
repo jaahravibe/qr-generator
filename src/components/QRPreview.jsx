@@ -1,31 +1,12 @@
-export default function QRPreview({
-  containerRef,
-  payload,
-  error,
-  bytes,
-  capacity,
-  overflow,
-  ecLevel,
-  forcedH,
-  meta,
-  versionTooSmall,
-  caption,
-  captionColor,
-}) {
+export default function QRPreview({ containerRef, payload, error }) {
   return (
     <section className="preview">
-      <div className={`stage${payload ? "" : " stage--empty"}`}>
+      <div className={`stage${payload ? "" : " stage--empty"}`} ref={containerRef}>
         {!payload && (
           <div className="empty">
             <span className="empty__qr" aria-hidden="true" />
             <p className="empty__msg">No signal — complete the form</p>
           </div>
-        )}
-        <div className="stage__qr" ref={containerRef} />
-        {caption && payload && (
-          <p className="stage__caption" style={{ color: captionColor }}>
-            {caption}
-          </p>
         )}
       </div>
 
@@ -34,20 +15,6 @@ export default function QRPreview({
           {error}
         </div>
       )}
-
-      <div className="chips">
-        <span className="chip">EC {ecLevel}</span>
-        {meta && (
-          <span className={`chip${versionTooSmall ? " chip--danger" : ""}`}>
-            v{meta.version} · {meta.moduleCount}²
-          </span>
-        )}
-        <span className="chip">
-          {bytes.toLocaleString()}B / ~{capacity.toLocaleString()}B
-        </span>
-        {forcedH && <span className="chip chip--accent">H forced · logo</span>}
-        {overflow && <span className="chip chip--danger">May not fit</span>}
-      </div>
     </section>
   );
 }

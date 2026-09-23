@@ -68,7 +68,7 @@ export function buildQROptions(s) {
     image: s.logoUrl || undefined,
     imageOptions: {
       imageSize: s.logoSize,
-      margin: 8,
+      margin: s.logoMargin ?? 8,
       hideBackgroundDots: true,
       saveAsBlob: true,
     },
@@ -156,41 +156,6 @@ export function applyImageFills(svg, { ink, bg, corner }) {
   }
 }
 
-function roundRect(ctx, x, y, w, h, r) {
-  const rr = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
-}
-
-export function textLogoDataUrl(text, color, boxColor, px = 360) {
-  const c = document.createElement("canvas");
-  c.width = px;
-  c.height = px;
-  const ctx = c.getContext("2d");
-  const family = '"Segoe UI", system-ui, -apple-system, sans-serif';
-  const measure = (fs) => {
-    ctx.font = `700 ${fs}px ${family}`;
-    return ctx.measureText(text).width;
-  };
-  let fs = 110;
-  while (measure(fs) > px * 0.74 && fs > 18) fs -= 6;
-  const tw = ctx.measureText(text).width;
-  const h = fs;
-  roundRect(ctx, (px - tw - h * 0.9) / 2, (px - h * 1.7) / 2, tw + h * 0.9, h * 1.7, h * 0.38);
-  ctx.fillStyle = boxColor;
-  ctx.fill();
-  ctx.fillStyle = color;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(text, px / 2, px / 2 + h * 0.05);
-  return c.toDataURL("image/png");
-}
-
 export function saveBlob(blob, name) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -223,69 +188,93 @@ export async function copyText(text) {
   }
 }
 
-function canvasToBlob(canvas) {
+function loadImage(src) {
   return new Promise((resolve, reject) => {
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("PNG export failed"))), "image/png");
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Could not load image"));
+    img.src = src;
   });
 }
 
-function fitText(ctx, text, maxW) {
-  let t = text;
-  while (ctx.measureText(t).width > maxW && t.length > 2) t = t.slice(0, -1);
-  return t !== text ? `${t}…` : text;
+function canvasToBlob(c, type) {
+  return new Promise((resolve, reject) => {
+    c.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not encode image"))), type);
+  });
 }
 
-export async function exportPNG({ qr, caption, fgColor, bgColor, name = "qr-code" }) {
-  if (!caption || !caption.trim()) {
-    const blob = await qr.getRawData("png");
-    if (!blob) throw new Error("PNG export failed");
+/**
+ * Exports the rendered QR. When `overlay(w, h)` is provided it must return a
+ * PNG data URL for a lockup badge; it is drawn over the raster logo box at
+ * full export resolution (text is rendered vector-crisp then downscaled).
+ */
+export async function exportPNG({ qr, name = "qr-code", overlay = null } = {}) {
+  const blob = await qr.getRawData("png");
+  if (!blob) throw new Error("PNG export failed");
+  if (!overlay) {
     saveBlob(blob, `${name}.png`);
     return;
   }
-  const canvas = await qr._getElement("png");
-  const capH = Math.round(canvas.height * 0.1);
-  const out = document.createElement("canvas");
-  out.width = canvas.width;
-  out.height = canvas.height + capH;
-  const ctx = out.getContext("2d");
-  ctx.fillStyle = bgColor;
-  ctx.fillRect(0, 0, out.width, out.height);
-  ctx.drawImage(canvas, 0, 0);
-  ctx.fillStyle = fgColor;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = `600 ${Math.round(capH * 0.42)}px "Segoe UI", system-ui, sans-serif`;
-  ctx.fillText(fitText(ctx, caption.trim(), out.width - 40), out.width / 2, canvas.height + capH / 2);
-  const blob = await canvasToBlob(out);
-  saveBlob(blob, `${name}.png`);
+  const svgStr = await getSvgString({ qr });
+  const doc = new DOMParser().parseFromString(svgStr, "image/svg+xml");
+  const root = doc.documentElement;
+  const w = Number(root.getAttribute("width")) || 0;
+  const h = Number(root.getAttribute("height")) || 0;
+  if (!w || !h) {
+    saveBlob(blob, `${name}.png`);
+    return;
+  }
+  const images = root.getElementsByTagName("image");
+  let img = null;
+  for (const el of images) {
+    let p = el.parentNode;
+    let inDefs = false;
+    while (p) {
+      if (p.nodeName.toLowerCase() === "defs") inDefs = true;
+      p = p.parentNode;
+    }
+    if (!inDefs) {
+      img = el;
+      break;
+    }
+  }
+  const iw = img ? parseFloat(img.getAttribute("width")) : 0;
+  const ih = img ? parseFloat(img.getAttribute("height")) : 0;
+  if (!img || !iw || !ih) {
+    saveBlob(blob, `${name}.png`);
+    return;
+  }
+  const badge = await overlay(Math.round(Math.max(iw, ih)));
+  const frame = await loadImage(URL.createObjectURL(blob));
+  const overlayImg = await loadImage(badge);
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(frame, 0, 0, w, h);
+  ctx.drawImage(overlayImg, parseFloat(img.getAttribute("x")) || 0, parseFloat(img.getAttribute("y")) || 0, iw, ih);
+  saveBlob(await canvasToBlob(c, "image/png"), `${name}.png`);
 }
 
-function appendCaptionToSvg(svg, caption, color) {
-  const esc = (s) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const capH = 56;
-  const fontSize = 20;
-  const mH = svg.match(/height="(\d+)"/);
-  const mV = svg.match(/viewBox="0 0 ([^ ]+) ([^"]+)"/);
-  const H = mH ? parseInt(mH[1], 10) : 256;
-  const newH = H + capH;
-  let out = svg;
-  if (mH) out = out.replace(mH[0], `height="${newH}"`);
-  if (mV) out = out.replace(mV[0], `viewBox="0 0 ${mV[1]} ${newH}"`);
-  const text = `<text x="${H / 2}" y="${H + capH / 2}" text-anchor="middle" dominant-baseline="middle" font-family="system-ui, sans-serif" font-size="${fontSize}" font-weight="600" fill="${color}">${esc(caption)}</text>`;
-  return out.replace("</svg>", `${text}\n</svg>`);
-}
-
-export async function getSvgString({ qr, caption, fgColor }) {
+export async function getSvgString({ qr }) {
   const blob = await qr.getRawData("svg");
   if (!blob) throw new Error("SVG export failed");
-  let svg = await blob.text();
-  if (caption && caption.trim()) svg = appendCaptionToSvg(svg, caption.trim(), fgColor);
-  return svg;
+  return blob.text();
 }
 
-export async function exportSVG({ qr, caption, fgColor, name = "qr-code" }) {
-  const svg = await getSvgString({ qr, caption, fgColor });
+/**
+ * Exports the QR as SVG. When `vectorize(svg)` is provided, the raster logo
+ * `<image>` is swapped for a true-vector lockup before saving (or kept as-is
+ * if the callback returns false).
+ */
+export async function exportSVG({ qr, name = "qr-code", vectorize = null } = {}) {
+  let svg = await getSvgString({ qr });
+  if (vectorize) {
+    const doc = new DOMParser().parseFromString(svg, "image/svg+xml");
+    if (vectorize(doc.documentElement)) {
+      svg = new XMLSerializer().serializeToString(doc);
+    }
+  }
   saveBlob(new Blob([svg], { type: "image/svg+xml" }), `${name}.svg`);
   return svg;
 }

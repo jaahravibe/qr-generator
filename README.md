@@ -19,9 +19,9 @@ Deploys as a static site to GitHub Pages.
 - **Verify before export**: the Export tab lists a reminder whenever a styling
   choice (image fill, gradient, or logo) could hurt scannability. Scan the code
   with your phone to confirm it reads before relying on it.
-- **Badge & caption**: center the QR with an uploaded image or a rendered text
-  wordmark (forces EC level H), and an optional caption line below the code
-  that is included in exports.
+- **Badge**: center the QR with an uploaded image, a bundled preset, or a
+  rendered text wordmark (forces EC level H). Tune the badge's plate shape,
+  color, border, padding and opacity.
 - **Exports**: one Export menu with PNG download, SVG download, and copy SVG to
   clipboard. A live byte counter surfaces capacity overflow before the code
   fails to generate.

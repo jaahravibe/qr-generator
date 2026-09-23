@@ -10,13 +10,20 @@ import {
   buildQROptions,
   EC_CAPACITY,
   qrMeta,
-  textLogoDataUrl,
   exportPNG,
   exportSVG,
   getSvgString,
   copyText,
   applyImageFills,
 } from "./lib/qr.js";
+import {
+  composeLogo,
+  composeTextBadge,
+  logoCoverage,
+  readLogoFile,
+  vectorizeBadge,
+  DEFAULT_LOGO_STYLE,
+} from "./lib/logo.js";
 
 const THEME_CYCLE = { light: "dark", dark: "system", system: "light" };
 
@@ -55,15 +62,6 @@ function IconMonitor() {
 
 const THEME_ICONS = { light: <IconSun />, dark: <IconMoon />, system: <IconMonitor /> };
 
-function slug(v) {
-  return v
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-}
-
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("qr-theme") || "system");
 
@@ -99,10 +97,12 @@ function App() {
   const [cornerImg, setCornerImg] = useState("");
 
   const [logoType, setLogoType] = useState("none");
-  const [logoTxt, setLogoTxt] = useState("");
   const [logoImg, setLogoImg] = useState("");
+  const [logoMeta, setLogoMeta] = useState(null);
+  const [logoError, setLogoError] = useState(null);
   const [logoSize, setLogoSize] = useState(0.35);
-  const [caption, setCaption] = useState("");
+  const [logoStyle, setLogoStyle] = useState(DEFAULT_LOGO_STYLE);
+  const [logoUrl, setLogoUrl] = useState(null);
 
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -118,17 +118,106 @@ function App() {
     [payload],
   );
 
-  const logoUrl = useMemo(() => {
-    if (logoType === "image") return logoImg || null;
-    if (logoType === "text") {
-      const t = logoTxt.trim();
-      if (!t) return null;
-      return textLogoDataUrl(t, fgType === "gradient" ? fgColor2 : fgColor, bgColor);
-    }
-    return null;
-  }, [logoType, logoImg, logoTxt, fgColor, fgColor2, fgType, bgColor]);
+  const lockup = logoStyle.lockup || DEFAULT_LOGO_STYLE.lockup;
+  const wordmarkText = lockup.lines.map((l) => l.text || "").join(" ").trim();
+  const hasLogo = logoType === "image" ? !!logoImg : logoType === "text" ? !!wordmarkText : false;
+  const logoInk = fgType === "gradient" ? fgColor2 : fgColor;
+  const logoShape = logoStyle.shape[logoType] ?? "rounded";
+  const logoPlateColor = logoStyle.plateColor || (bgType === "solid" ? bgColor : "#ffffff");
 
-  const forcedH = logoType !== "none";
+  useEffect(() => {
+    let active = true;
+    const id = setTimeout(() => {
+      (async () => {
+        const src = hasLogo
+          ? logoType === "image"
+            ? logoImg
+            : await composeTextBadge({
+                lockup,
+                inkColor: logoInk,
+                shape: logoShape,
+                plateColor: logoPlateColor,
+                borderWidth: logoStyle.borderWidth,
+                borderColor: logoStyle.borderColor,
+                radius: logoStyle.radius,
+                padding: logoStyle.padding,
+                opacity: logoStyle.opacity,
+              })
+          : null;
+        if (!active) return;
+        if (!src) {
+          setLogoUrl(null);
+          return;
+        }
+        try {
+          const url = await composeLogo({
+            src,
+            shape: logoShape,
+            plateColor: logoPlateColor,
+            borderWidth: logoStyle.borderWidth,
+            borderColor: logoStyle.borderColor,
+            radius: logoStyle.radius,
+            padding: logoStyle.padding,
+            opacity: logoStyle.opacity,
+          });
+          if (active) {
+            setLogoUrl(url);
+            setLogoError(null);
+          }
+        } catch (e) {
+          if (active) {
+            setLogoUrl(null);
+            setLogoError(String(e?.message || e));
+          }
+        }
+      })();
+    }, 120);
+    return () => {
+      active = false;
+      clearTimeout(id);
+    };
+  }, [
+    hasLogo,
+    logoType,
+    logoImg,
+    lockup,
+    logoInk,
+    logoShape,
+    logoPlateColor,
+    logoStyle.borderWidth,
+    logoStyle.borderColor,
+    logoStyle.radius,
+    logoStyle.padding,
+    logoStyle.opacity,
+  ]);
+
+  function handleLogoFile(file) {
+    if (!file) {
+      setLogoImg("");
+      setLogoMeta(null);
+      setLogoError(null);
+      return;
+    }
+    readLogoFile(file).then((meta) => {
+      if (!meta.ok) {
+        setLogoImg("");
+        setLogoMeta(null);
+        setLogoError(meta.error);
+        return;
+      }
+      setLogoError(null);
+      setLogoMeta(meta);
+      setLogoImg(meta.dataUrl);
+    });
+  }
+
+  function handleLogoPreset(preset) {
+    setLogoError(null);
+    setLogoMeta(null);
+    setLogoImg(preset.src);
+  }
+
+  const forcedH = hasLogo;
   const effectiveEc = forcedH ? "H" : ecLevel;
   const capacity = EC_CAPACITY[effectiveEc];
   const overflow = bytes > capacity;
@@ -139,9 +228,10 @@ function App() {
   );
   const versionTooSmall = version > 0 && !!meta && !meta.fits;
   const renderVersion = versionTooSmall ? 0 : version;
+  const coveragePct = logoCoverage(logoSize, meta?.moduleCount || 25);
 
   const fgExport = fgType === "solid" || fgType === "image" ? fgColor : fgColor2;
-  const fileName = useMemo(() => slug(caption) || "qr-code", [caption]);
+  const fileName = "qr-code";
 
   const qrRef = useRef(null);
   const containerRef = useRef(null);
@@ -169,6 +259,7 @@ function App() {
         cornerColor2,
         logoUrl,
         logoSize,
+        logoMargin: 8,
       }),
     [payload, size, margin, effectiveEc, renderVersion, fgType, fgColor, fgColor2, bgType, bgColor, bgColor2, dotStyle, cornerStyle, cornerFill, cornerColor, cornerColor2, logoUrl, logoSize],
   );
@@ -219,15 +310,39 @@ function App() {
     }
   }
 
+  const badgeForExport = {
+    lockup,
+    inkColor: logoInk,
+    shape: logoShape,
+    plateColor: logoPlateColor,
+    borderWidth: logoStyle.borderWidth,
+    borderColor: logoStyle.borderColor,
+    radius: logoStyle.radius,
+    padding: logoStyle.padding,
+    opacity: logoStyle.opacity,
+  };
+
   const handlePng = () =>
-    runExport(() => exportPNG({ qr: qrRef.current, caption, fgColor: fgExport, bgColor, name: fileName }));
+    runExport(() =>
+      exportPNG({
+        qr: qrRef.current,
+        name: fileName,
+        overlay: logoType === "text" && hasLogo ? (px) => composeTextBadge({ ...badgeForExport, size: px }) : null,
+      }),
+    );
 
   const handleSvg = () =>
-    runExport(() => exportSVG({ qr: qrRef.current, caption, fgColor: fgExport, name: fileName }));
+    runExport(() =>
+      exportSVG({
+        qr: qrRef.current,
+        name: fileName,
+        vectorize: logoType === "text" && hasLogo ? (svg) => vectorizeBadge(svg, badgeForExport) : null,
+      }),
+    );
 
   const handleCopySvg = () =>
     runExport(async () => {
-      const svg = await getSvgString({ qr: qrRef.current, caption, fgColor: fgExport });
+      const svg = await getSvgString({ qr: qrRef.current });
       const ok = await copyText(svg);
       clearTimeout(copiedTimer.current);
       setCopied(ok);
@@ -263,20 +378,7 @@ function App() {
       </header>
 
       <main className="layout">
-        <QRPreview
-          containerRef={containerRef}
-          payload={payload}
-          error={error}
-          bytes={bytes}
-          capacity={capacity}
-          overflow={overflow}
-          ecLevel={effectiveEc}
-          forcedH={forcedH}
-          meta={meta}
-          versionTooSmall={versionTooSmall}
-          caption={caption}
-          captionColor={fgExport}
-        />
+        <QRPreview containerRef={containerRef} payload={payload} error={error} />
 
         <div className="stack">
           <section className="card editor">
@@ -358,15 +460,25 @@ function App() {
                 <LogoControls
                   logoType={logoType}
                   onLogoType={setLogoType}
-                  logoTxt={logoTxt}
-                  onLogoTxt={setLogoTxt}
+                  lockup={lockup}
+                  onLockup={(patch) =>
+                    setLogoStyle((s) => ({
+                      ...s,
+                      lockup: { ...(s.lockup || DEFAULT_LOGO_STYLE.lockup), ...patch },
+                    }))
+                  }
                   logoImg={logoImg}
-                  onLogoImg={setLogoImg}
+                  logoMeta={logoMeta}
+                  onLogoFile={handleLogoFile}
+                  onLogoPreset={handleLogoPreset}
+                  logoError={logoError}
+                  hasLogo={hasLogo}
                   logoSize={logoSize}
                   onLogoSize={setLogoSize}
-                  caption={caption}
-                  onCaption={setCaption}
+                  logoStyle={logoStyle}
+                  onLogoStyle={(patch) => setLogoStyle((s) => ({ ...s, ...patch }))}
                   previewColor={fgExport}
+                  coveragePct={coveragePct}
                 />
               )}
               {tab === "export" && (
@@ -401,7 +513,7 @@ function App() {
                           <p className="reminder__why">The lighter end of the gradient may not scan, so test it before exporting.</p>
                         </div>
                       )}
-                      {logoType !== "none" && (
+                      {hasLogo && (
                         <div className="reminder">
                           <p className="reminder__what">Logo overlaid on the code</p>
                           <p className="reminder__why">The logo hides part of the data, so test the scan on a few different devices before exporting.</p>
