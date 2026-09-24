@@ -778,7 +778,13 @@ select {
   display: none;
 }
 
-.stage canvas {
+.stage__qr {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.stage__qr canvas {
   max-width: min(720px, 100%);
   height: auto;
   aspect-ratio: 1 / 1;
