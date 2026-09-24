@@ -12,10 +12,10 @@ const CRYPTO_SCHEMES = [
   { v: "cosmos", label: "Cosmos" },
 ];
 
-const escVCard = (s) => s.replace(/\\/g, "").replace(/;/g, ",").replace(/[\r\n]+/g, " ").trim();
+const escVCard = (s) =>
+  s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/[\r\n]+/g, "\\n").trim();
 const escWifi = (s) =>
   s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/:/g, "\\:").replace(/"/g, '\\"');
-const escMeCard = (s) => s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/:/g, "\\:").replace(/"/g, '\\"').replace(/[\r\n]+/g, " ").trim();
 
 const stripDigits = (s) => s.replace(/\D/g, "");
 const stripFormatting = (s) => s.replace(/[\s().-]/g, "");
@@ -88,32 +88,6 @@ export const PRESETS = {
       const s = ssid.trim();
       if (!s) return "";
       return `WIFI:T:${encryption};S:${escWifi(s)};P:${escWifi(password)};;`;
-    },
-  },
-  contact: {
-    label: "Contact",
-    fields: [
-      { key: "first", type: "text", label: "First name" },
-      { key: "last", type: "text", label: "Last name" },
-      { key: "org", type: "text", label: "Company" },
-      { key: "phone", type: "text", label: "Phone" },
-      { key: "email", type: "text", label: "Email" },
-      { key: "url", type: "text", label: "Website" },
-    ],
-    defaults: { first: "", last: "", org: "", phone: "", email: "", url: "" },
-    build: ({ first = "", last = "", org = "", phone = "", email = "", url = "" }) => {
-      const lines = ["BEGIN:VCARD", "VERSION:3.0"];
-      if (first || last) {
-        lines.push(`N:${escVCard(last)};${escVCard(first)};;;`);
-        lines.push(`FN:${escVCard([first, last].filter(Boolean).join(" "))}`);
-      }
-      if (org) lines.push(`ORG:${escVCard(org)}`);
-      if (phone) lines.push(`TEL;TYPE=CELL:${escVCard(phone)}`);
-      if (email) lines.push(`EMAIL:${escVCard(email)}`);
-      if (url) lines.push(`URL:${escVCard(url)}`);
-      if (lines.length === 2) return "";
-      lines.push("END:VCARD");
-      return lines.join("\n");
     },
   },
   email: {
@@ -194,8 +168,8 @@ export const PRESETS = {
       return n ? `tel:${n}` : "";
     },
   },
-  mecard: {
-    label: "Business card (MeCard)",
+  business: {
+    label: "Business card",
     fields: [
       { key: "name", type: "text", label: "Name", placeholder: "Jane Doe" },
       { key: "org", type: "text", label: "Company" },
@@ -205,17 +179,21 @@ export const PRESETS = {
     ],
     defaults: { name: "", org: "", phone: "", email: "", url: "" },
     build: ({ name = "", org = "", phone = "", email = "", url = "" }) => {
-      const fields = [];
-      if (name.trim()) {
-        const [namePart = "", ...rest] = name.trim().split(/\s+/);
+      const n = name.trim();
+      const lines = ["BEGIN:VCARD", "VERSION:3.0"];
+      if (n) {
+        const [first = "", ...rest] = n.split(/\s+/);
         const last = rest.join(" ");
-        fields.push(`N:${escMeCard(last)},${escMeCard(namePart)}`);
+        lines.push(`N:${escVCard(last)};${escVCard(first)};;;`);
+        lines.push(`FN:${escVCard(n)}`);
       }
-      if (org.trim()) fields.push(`ORG:${escMeCard(org)}`);
-      if (phone.trim()) fields.push(`TEL:${escMeCard(phone)}`);
-      if (email.trim()) fields.push(`EMAIL:${escMeCard(email)}`);
-      if (url.trim()) fields.push(`URL:${escMeCard(url)}`);
-      return fields.length ? `MECARD:${fields.join(";")};;` : "";
+      if (org.trim()) lines.push(`ORG:${escVCard(org)}`);
+      if (phone.trim()) lines.push(`TEL;TYPE=CELL:${escVCard(phone)}`);
+      if (email.trim()) lines.push(`EMAIL:${escVCard(email)}`);
+      if (url.trim()) lines.push(`URL:${escVCard(url)}`);
+      if (lines.length === 2) return "";
+      lines.push("END:VCARD");
+      return lines.join("\r\n");
     },
   },
   geo: {
